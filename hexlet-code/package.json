@@ -7,10 +7,16 @@
     "start": "node src/app.js"
   },
   "dependencies": {
+    "@fastify/cookie": "^8.3.0",
+    "@fastify/flash": "^5.2.0",
+    "@fastify/session": "^9.0.0",
     "@fastify/view": "^8.2.0",
     "dotenv": "^16.4.0",
     "fastify": "^4.26.0",
     "i18next": "^26.0.3",
-    "pug": "^3.0.4"
+    "knex": "^3.2.9",
+    "objection": "^3.1.5",
+    "pug": "^3.0.4",
+    "sqlite3": "^6.0.1"
   }
 }

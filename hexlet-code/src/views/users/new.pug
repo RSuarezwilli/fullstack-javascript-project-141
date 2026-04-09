@@ -1,0 +1,18 @@
+extends ../layouts/application.pug
+
+block content
+  h1 Registro
+  form(action='/users' method='post')
+    .mb-3
+      label(for="data_firstName") Nombre
+      input#data_firstName.form-control(name="data[firstName]" type="text" value=user.firstName || '')
+    .mb-3
+      label(for="data_lastName") Apellido
+      input#data_lastName.form-control(name="data[lastName]" type="text" value=user.lastName || '')
+    .mb-3
+      label(for="data_email") Email
+      input#data_email.form-control(name="data[email]" type="email" value=user.email || '')
+    .mb-3
+      label(for="data_password") Contraseña
+      input#data_password.form-control(name="data[password]" type="password")
+    button.btn.btn-primary(type="submit") Registrar

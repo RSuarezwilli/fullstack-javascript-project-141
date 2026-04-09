@@ -4,15 +4,26 @@ import pug from 'pug';
 import i18next from 'i18next';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { Model } from 'objection';
+import Knex from 'knex';
 
-// 1. Configuración de rutas (Para que el servidor encuentre tus carpetas)
+// Importación de plugins y rutas
+import fastifyCookie from '@fastify/cookie';
+import fastifySession from '@fastify/session';
+import fastifyFlash from '@fastify/flash';
+import usersRoutes from './routes/users.js';
+import knexConfig from '../knexfile.js';
+
+// 1. CONFIGURACIÓN DE BASE DE DATOS (El "combustible")
+const knex = Knex(knexConfig.development);
+Model.knex(knex); // Conecta los modelos a la base de datos
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = Fastify({ logger: true });
 
-// 2. PASO: Inicializar i18next (El traductor)
-// ¿Para qué?: Para centralizar todos los textos como pide el proyecto.
+// 2. INICIALIZAR TRADUCCIONES (i18next)
 await i18next.init({
   lng: 'es',
   resources: {
@@ -40,28 +51,38 @@ await i18next.init({
   }
 });
 
-// 3. PASO: Registrar el motor de plantillas (El dibujante)
-// ¿Para qué?: Para que el servidor "dibuje" el HTML usando archivos .pug
+// 3. REGISTRO DE PLUGINS (Orden crítico para que funcione el "Flash")
+await app.register(fastifyCookie);
+await app.register(fastifySession, {
+  secret: 'a-very-long-secret-key-at-least-32-chars-long',
+  cookie: { secure: false },
+});
+await app.register(fastifyFlash);
+
+// 4. MOTOR DE PLANTILLAS (Pug)
 app.register(view, {
   engine: {
     pug: pug,
   },
-  root: path.join(__dirname, 'views'), // Aquí buscará tus archivos .pug
+  root: path.join(__dirname, 'views'),
   defaultContext: {
-    t: (key) => i18next.t(key), // Esto permite usar t('key') en el HTML
+    t: (key) => i18next.t(key),
+    // Esto asegura que la variable "reply" esté disponible en el layout para el flash
+    getMessages: (reply) => reply.flash(),
   },
 });
 
-// 4. PASO: Cambiar la ruta principal
-// ¿Para qué?: Antes enviabas un texto, ahora enviarás una VISTA completa.
+// 5. RUTAS (Deben ir después de los plugins)
+usersRoutes(app);
+
 app.get('/', async (request, reply) => {
-  // .view('index.pug') busca el archivo en la carpeta 'src/views'
-  return reply.view('index.pug');
+  // Cambia esto a 'index.pug' si moviste el archivo a la raíz de views
+  return reply.view('index.pug'); 
 });
 
+// 6. ARRANQUE DEL SERVIDOR
 const start = async () => {
   try {
-    // Nota: host '0.0.0.0' es vital para que funcione en Render
     await app.listen({ port: process.env.PORT || 3000, host: '0.0.0.0' });
   } catch (err) {
     app.log.error(err);
