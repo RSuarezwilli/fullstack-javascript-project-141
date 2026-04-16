@@ -8,12 +8,17 @@ import { Model } from 'objection';
 import Knex from 'knex';
 
 // Importación de plugins y rutas
+import reverseRoutes from 'fastify-reverse-routes';
 import fastifyCookie from '@fastify/cookie';
 import fastifySession from '@fastify/session';
 import fastifyFlash from '@fastify/flash';
 import usersRoutes from './routes/users.js';
 import knexConfig from '../knexfile.js';
-
+import TaskStatus from './models/TaskStatus.js';
+import registerStatusesRoutes from './routes/statuses.js';
+import Task from './models/Task.js';
+import registerTasksRoutes from './routes/tasks.js';
+import User from './models/users.js';
 // 1. CONFIGURACIÓN DE BASE DE DATOS (El "combustible")
 const knex = Knex(knexConfig.development);
 Model.knex(knex); // Conecta los modelos a la base de datos
@@ -22,6 +27,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = Fastify({ logger: true });
+app.decorate('objection', {
+  models: {
+    user: User,
+    taskStatus: TaskStatus, // 'taskStatus' debe coincidir con lo que usas en routes/statuses.js
+    task: Task,
+  },
+});
 
 // 2. INICIALIZAR TRADUCCIONES (i18next)
 await i18next.init({
@@ -29,13 +41,38 @@ await i18next.init({
   resources: {
     es: {
       translation: {
+        // ... dentro de es.translation.views
+tasks: {
+  index: {
+    title: 'Tareas',
+    create: 'Crear tarea',
+    id: 'ID',
+    name: 'Nombre',
+    status: 'Estado',
+    author: 'Autor',
+    executor: 'Ejecutor',
+    createdAt: 'Fecha de creación',
+    edit: 'Editar',
+    delete: 'Eliminar',
+  },
+  new: {
+    title: 'Crear tarea',
+    name: 'Nombre',
+    description: 'Descripción',
+    statusId: 'Estado',
+    executorId: 'Ejecutor',
+    submit: 'Crear',
+  },
+},
         layouts: {
           main: {
             title: 'Mi Aplicación Hexlet',
             brand: 'Hexlet Proyecto',
             users: 'Usuarios',
+            statuses: 'Estados',
             footer_text: '© 2026 William Suarez - Estudiante de Software'
           }
+          
         },
         views: {
           welcome: {
@@ -58,28 +95,35 @@ await app.register(fastifySession, {
   cookie: { secure: false },
 });
 await app.register(fastifyFlash);
-
+await app.register(reverseRoutes);
 // 4. MOTOR DE PLANTILLAS (Pug)
 app.register(view, {
-  engine: {
-    pug: pug,
-  },
+  engine: { pug },
   root: path.join(__dirname, 'views'),
   defaultContext: {
+    // ESTE ES EL FUSIBLE:
+    route: (name, params = {}, query = {}) => {
+      // Si Fastify manda un objeto por error, lo ignoramos y devolvemos '#'
+      if (typeof name !== 'string') {
+        return '#';
+      }
+      try {
+        return app.reverse(name, params, query);
+      } catch (err) {
+        return '#';
+      }
+    },
     t: (key) => i18next.t(key),
-    // Esto asegura que la variable "reply" esté disponible en el layout para el flash
-    getMessages: (reply) => reply.flash(),
+    getMessages: (reply) => (reply && typeof reply.flash === 'function' ? reply.flash() : {}),
   },
 });
-
 // 5. RUTAS (Deben ir después de los plugins)
 usersRoutes(app);
-
-app.get('/', async (request, reply) => {
-  // Cambia esto a 'index.pug' si moviste el archivo a la raíz de views
+registerStatusesRoutes(app);
+registerTasksRoutes(app);
+app.get('/', { name: 'root' }, async (request, reply) => {
   return reply.view('index.pug'); 
 });
-
 // 6. ARRANQUE DEL SERVIDOR
 const start = async () => {
   try {

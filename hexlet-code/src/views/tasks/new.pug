@@ -1,0 +1,31 @@
+extends ../layouts/application.pug
+
+block content
+  h1.display-4.fw-bold.mt-4= t('views.tasks.new.title')
+  
+  form(action=route('tasks') method='post')
+    .mb-3
+      label(for="data_name")= t('views.tasks.new.name')
+      input.form-control(id="data_name" name="data[name]" type="text" value=task.name)
+    
+    .mb-3
+      label(for="data_description")= t('views.tasks.new.description')
+      textarea.form-control(id="data_description" name="data[description]" rows="3")= task.description
+
+    .mb-3
+      label(for="data_statusId")= t('views.tasks.new.statusId')
+      select.form-control(id="data_statusId" name="data[statusId]")
+        option(value="") 
+        each status in statuses
+          option(value=status.id, selected=(status.id == task.statusId))= status.name
+
+    .mb-3
+      label(for="data_executorId")= t('views.tasks.new.executorId')
+      select.form-control(id="data_executorId" name="data[executorId]")
+        option(value="") 
+        each user in users
+          option(value=user.id, selected=(user.id == task.executorId))= `${user.firstName} ${user.lastName}`
+
+    input(type="hidden" name="data[creatorId]" value=currUserId)
+    
+    input.btn.btn-primary(type="submit" value=t('views.tasks.new.submit'))

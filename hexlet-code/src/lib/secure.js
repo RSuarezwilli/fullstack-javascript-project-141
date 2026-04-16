@@ -1,3 +1,7 @@
 import crypto from 'crypto';
 
-export default (password) => crypto.createHash('sha256').update(password).digest('hex');
+// Usamos export const para que coincida con la importación { encrypt }
+export const encrypt = (password) => crypto
+  .createHash('sha256')
+  .update(password)
+  .digest('hex'); 

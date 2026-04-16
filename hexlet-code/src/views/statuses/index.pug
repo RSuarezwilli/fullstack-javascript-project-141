@@ -1,0 +1,15 @@
+extends ../layouts/application.pug
+
+block content
+  h1.display-4.fw-bold.my-4 Estados
+  a.btn.btn-primary.mb-3(href=route('newStatus')) Crear estado
+  table.table.table-striped
+    thead
+      tr
+        th ID
+        th Nombre
+    tbody
+      each status in statuses
+        tr
+          td= status.id
+          td= status.name
