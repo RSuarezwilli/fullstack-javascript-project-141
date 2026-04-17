@@ -1,0 +1,23 @@
+extends ../layouts/application.pug
+
+block content
+  h1.display-4.fw-bold.my-4= t('views.labels.index.title')
+  a.btn.btn-primary.mb-3(href=route('labels_new'))= t('views.labels.index.create')
+  
+  table.table.table-striped
+    thead
+      tr
+        th= t('views.labels.index.id')
+        th= t('views.labels.index.name')
+        th= t('views.labels.index.createdAt')
+        th
+    tbody
+      each label in labels
+        tr
+          td= label.id
+          td= label.name
+          td= label.createdAt 
+          td
+            .d-flex
+              a.btn.btn-outline-primary.me-2(href=route('labels_edit', { id: label.id }))= t('views.labels.index.edit')
+              +buttonTo(route('labels_delete', { id: label.id }), 'delete')(class="btn btn-outline-danger" value=t('views.labels.index.delete'))

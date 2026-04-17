@@ -1,23 +1,27 @@
-import User from '../models/users.js';
-
 export default (app) => {
   app
-    .get('/users/new', { name: 'newUser' }, (req, reply) => {
-      const user = new User();
-      return reply.view('users/new.pug', { user });
+    .get('/session/new', { name: 'newSession' }, (req, reply) => {
+      return reply.view('sessions/new.pug', { signInForm: {} });
     })
-    .post('/users', async (req, reply) => {
-      const userData = req.body.data; 
+    .post('/session', { name: 'session' }, async (req, reply) => {
+      const { data } = req.body;
       try {
-        const user = await User.fromJson(userData);
-        await User.query().insert(user);
-        return reply.redirect('/');
+        const user = await app.objection.models.user.query().findOne({ email: data.email });
+
+        if (user && user.passwordDigest === data.password) {
+          req.session.set('userId', user.id);
+          req.flash('info', 'Bienvenido');
+          return reply.redirect(app.reverse('root'));
+        }
+
+        req.flash('error', 'Email o contraseña incorrectos.');
+        return reply.view('sessions/new.pug', { signInForm: data });
       } catch (err) {
-        return reply.view('users/new.pug', { user: userData, errors: err.data });
+        return reply.redirect(app.reverse('newSession'));
       }
     })
-    .get('/users', { name: 'users' }, async (req, reply) => {
-      const users = await User.query();
-      return reply.view('users/index.pug', { users });
+    .delete('/session', { name: 'deleteSession' }, (req, reply) => {
+      req.session.delete();
+      return reply.redirect(app.reverse('root'));
     });
-}; // <--- ESTA LLAVE Y PUNTO Y COMA SON VITALES
+};

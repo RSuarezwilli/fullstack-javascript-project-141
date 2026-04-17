@@ -55,12 +55,28 @@ export default class Task extends Model {
   static get tableName() {
     return 'tasks';
   }
+  
 static get columnNameMappers() {
     return snakeCaseMappers();
   }
 
   static get relationMappings() {
     return {
+
+      // Dentro de Task.js, añade a relationMappings:
+labels: {
+  relation: Model.ManyToManyRelation,
+  modelClass: path.join(__dirname, 'Label.js'),
+  join: {
+    from: 'tasks.id',
+    through: {
+      from: 'tasks_labels.task_id',
+      to: 'tasks_labels.label_id',
+    },
+    to: 'labels.id',
+  },
+},
+
       status: {
         relation: Model.BelongsToOneRelation,
         modelClass: TaskStatus,

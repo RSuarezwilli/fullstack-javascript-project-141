@@ -1,0 +1,13 @@
+extends ../layouts/application.pug
+
+block content
+  .container.wrapper.flex-grow-1
+    h1.display-4.fw-bold.mb-4= t('views.sessions.new.title')
+    form(action=route('session') method='post')
+      .form-floating.mb-3
+        input#data_email.form-control(name='data[email]' type='email' placeholder='Email')
+        label(for='data_email')= t('views.sessions.new.email')
+      .form-floating.mb-3
+        input#data_password.form-control(name='data[password]' type='password' placeholder='Contraseña')
+        label(for='data_password')= t('views.sessions.new.password')
+      input.btn.btn-primary.w-100(type='submit' value=t('views.sessions.new.submit'))

@@ -2,12 +2,12 @@ extends ../layouts/application.pug
 
 block content
   h1.display-4.fw-bold.mt-4= t('layouts.main.tasks')
-  //- Cambiamos route() por la URL manual
+  //- RUTA MANUAL
   a.btn.btn-primary.mb-3(href='/tasks/new')= t('views.tasks.index.create')
 
   .card.shadow-sm.mb-4
     .card-body.p-4.bg-light
-      //- URL manual para el formulario
+      //- RUTA MANUAL
       form(action='/tasks' method='get')
         .row
           .col-12.col-md
@@ -15,7 +15,7 @@ block content
               label(for="query_status")= t('views.tasks.search.status')
               select(id="query_status" name="query[status]" class="form-select")
                 option(value="")
-                each s in statuses || []
+                each s in (statuses || [])
                   option(value=s.id, selected=(s.id == (query && query.status)))= s.name
           
           .col-12.col-md
@@ -23,7 +23,7 @@ block content
               label(for="query_executor")= t('views.tasks.search.executor')
               select(id="query_executor" name="query[executor]" class="form-select")
                 option(value="")
-                each u in users || []
+                each u in (users || [])
                   option(value=u.id, selected=(u.id == (query && query.executor)))= `${u.firstName} ${u.lastName}`
           
           .col-12.col-md
@@ -31,7 +31,7 @@ block content
               label(for="query_label")= t('views.tasks.search.label')
               select(id="query_label" name="query[label]" class="form-select")
                 option(value="")
-                each l in labels || []
+                each l in (labels || [])
                   option(value=l.id, selected=(l.id == (query && query.label)))= l.name
 
         input(class="btn btn-primary" type="submit" value=t('views.tasks.search.filter'))
@@ -48,21 +48,22 @@ block content
         th= t('views.tasks.index.createdAt')
         th
     tbody
-      each task in tasks || []
-        tr
-          td= task.id
-          td
-            a(href=`/tasks/${task.id}`)= task.name
-          td= task.status ? task.status.name : ''
-          td= task.creator ? `${task.creator.firstName} ${task.creator.lastName}` : ''
-          td= task.executor ? `${task.executor.firstName} ${task.executor.lastName}` : ''
-          td
-            if task.labels
-              each label in task.labels
-                span.badge.bg-secondary.me-1= label.name
-          td= formatDate(task.createdAt)
-          td
-            .d-flex
-              //- URLs manuales para evitar errores de registro
-              a.btn.btn-primary.me-1(href=`/tasks/${task.id}/edit`)= t('views.tasks.index.edit')
-              +buttonTo(`/tasks/${task.id}`, 'delete')(class="btn btn-danger" value=t('views.tasks.index.delete'))
+      if tasks
+        each task in tasks
+          tr
+            td= task.id
+            td
+              a(href=`/tasks/${task.id}`)= task.name
+            td= task.status ? task.status.name : ''
+            td= task.creator ? `${task.creator.firstName} ${task.creator.lastName}` : ''
+            td= task.executor ? `${task.executor.firstName} ${task.executor.lastName}` : ''
+            td
+              if task.labels
+                each label in task.labels
+                  span.badge.bg-secondary.me-1= label.name
+            td= formatDate(task.createdAt)
+            td
+              .d-flex
+                //- RUTAS MANUALES PARA EVITAR EL ERROR [object Object]
+                a.btn.btn-primary.me-1(href=`/tasks/${task.id}/edit`)= t('views.tasks.index.edit')
+                +buttonTo(`/tasks/${task.id}`, 'delete')(class="btn btn-danger" value=t('views.tasks.index.delete'))

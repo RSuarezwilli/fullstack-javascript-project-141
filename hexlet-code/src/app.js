@@ -1,3 +1,5 @@
+
+
 import Fastify from 'fastify';
 import view from '@fastify/view';
 import pug from 'pug';
@@ -6,8 +8,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { Model } from 'objection';
 import Knex from 'knex';
-
+import Label from './models/Label.js';
 // Importación de plugins y rutas
+import sessionsRoutes from './routes/sessions.js';
 import reverseRoutes from 'fastify-reverse-routes';
 import fastifyCookie from '@fastify/cookie';
 import fastifySession from '@fastify/session';
@@ -19,6 +22,8 @@ import registerStatusesRoutes from './routes/statuses.js';
 import Task from './models/Task.js';
 import registerTasksRoutes from './routes/tasks.js';
 import User from './models/users.js';
+import labelsRoutes from './routes/labels.js';
+
 // 1. CONFIGURACIÓN DE BASE DE DATOS (El "combustible")
 const knex = Knex(knexConfig.development);
 Model.knex(knex); // Conecta los modelos a la base de datos
@@ -32,6 +37,7 @@ app.decorate('objection', {
     user: User,
     taskStatus: TaskStatus, // 'taskStatus' debe coincidir con lo que usas en routes/statuses.js
     task: Task,
+    label: Label,
   },
 });
 
@@ -63,6 +69,24 @@ tasks: {
     executorId: 'Ejecutor',
     submit: 'Crear',
   },
+  // Dentro de es.translation.views
+labels: {
+  index: {
+    title: 'Etiquetas',
+    create: 'Crear etiqueta',
+    id: 'ID',
+    name: 'Nombre',
+    createdAt: 'Fecha de creación',
+  },
+  new: {
+    title: 'Crear etiqueta',
+    submit: 'Crear',
+  },
+  edit: {
+    title: 'Editar etiqueta',
+    submit: 'Actualizar',
+  }
+},
 },
         layouts: {
           main: {
@@ -96,31 +120,46 @@ await app.register(fastifySession, {
 });
 await app.register(fastifyFlash);
 await app.register(reverseRoutes);
-// 4. MOTOR DE PLANTILLAS (Pug)
+// 4. MOTOR DE PLANTILLAS (Pug) - VERSIÓN CORREGIDA
+// 4. MOTOR DE PLANTILLAS (Pug) - CONFIGURACIÓN CORREGIDA
 app.register(view, {
   engine: { pug },
   root: path.join(__dirname, 'views'),
-  defaultContext: {
-    // ESTE ES EL FUSIBLE:
-    route: (name, params = {}, query = {}) => {
-      // Si Fastify manda un objeto por error, lo ignoramos y devolvemos '#'
-      if (typeof name !== 'string') {
-        return '#';
-      }
-      try {
-        return app.reverse(name, params, query);
-      } catch (err) {
-        return '#';
-      }
-    },
-    t: (key) => i18next.t(key),
-    getMessages: (reply) => (reply && typeof reply.flash === 'function' ? reply.flash() : {}),
+  // CAMBIO CLAVE: Usamos una función que recibe 'reply'
+  defaultContext(reply) {
+    return {
+      // Función route que no explota si recibe basura
+      route(name, params = {}, query = {}) {
+        if (typeof name !== 'string') return '#';
+        try {
+          return app.reverse(name, params, query);
+        } catch (err) {
+          return '#';
+        }
+      },
+      t(key) {
+        return i18next.t(key);
+      },
+      // CAMBIO CLAVE: getMessages usa el 'reply' del argumento de forma segura
+      getMessages() {
+        if (reply && typeof reply.flash === 'function') {
+          return reply.flash();
+        }
+        return {};
+      },
+      formatDate(date) {
+        return date ? new Date(date).toLocaleString() : '';
+      },
+    };
   },
 });
-// 5. RUTAS (Deben ir después de los plugins)
+//5. RUTAS (Deben ir después de los plugins)
 usersRoutes(app);
-registerStatusesRoutes(app);
-registerTasksRoutes(app);
+sessionsRoutes(app);
+// registerStatusesRoutes(app);
+// registerTasksRoutes(app);
+// labelsRoutes(app);
+
 app.get('/', { name: 'root' }, async (request, reply) => {
   return reply.view('index.pug'); 
 });

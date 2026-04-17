@@ -1,0 +1,22 @@
+extends ../layouts/application.pug
+
+block content
+  .container.wrapper.flex-grow-1
+    h1.display-4.fw-bold.my-4= t('views.labels.new.title')
+    
+    //- El formulario envía los datos a la ruta 'labels_create'
+    form(action=route('labels') method='post')
+      .mb-3
+        label(for="data_name")= t('views.labels.new.name')
+        input(
+          id="data_name"
+          name="data[name]"
+          class=(errors && errors.name ? 'form-control is-invalid' : 'form-control')
+          value=(label.name || '')
+          type="text"
+          required
+        )
+        if errors && errors.name
+          .invalid-feedback= errors.name[0].message
+
+      input(class="btn btn-primary" type="submit" value=t('views.labels.new.submit'))

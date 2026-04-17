@@ -1,0 +1,25 @@
+extends ../layouts/application.pug
+
+block content
+  .container.wrapper.flex-grow-1
+    h1.display-4.fw-bold.my-4= t('views.labels.edit.title')
+    
+    //- Usamos la ruta de actualización pasando el ID de la etiqueta
+    form(action=route('labels_update', { id: label.id }) method='post')
+      //- Muchos servidores requieren simular el método PATCH mediante un campo oculto
+      input(name='_method' type='hidden' value='PATCH')
+      
+      .mb-3
+        label(for="data_name")= t('views.labels.edit.name')
+        input(
+          id="data_name"
+          name="data[name]"
+          class=(errors && errors.name ? 'form-control is-invalid' : 'form-control')
+          value=(label.name || '')
+          type="text"
+          required
+        )
+        if errors && errors.name
+          .invalid-feedback= errors.name[0].message
+
+      input(class="btn btn-primary" type="submit" value=t('views.labels.edit.submit'))
