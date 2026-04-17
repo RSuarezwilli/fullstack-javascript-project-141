@@ -2,14 +2,13 @@ extends ../layouts/application.pug
 
 block content
   h1.display-4.fw-bold.mt-4= t('layouts.main.tasks')
-  //- Cambiamos route() por la URL manual
   a.btn.btn-primary.mb-3(href='/tasks/new')= t('views.tasks.index.create')
 
   .card.shadow-sm.mb-4
     .card-body.p-4.bg-light
-      //- URL manual para el formulario
       form(action='/tasks' method='get')
         .row
+          //- Filtro de Estado
           .col-12.col-md
             .mb-3
               label(for="query_status")= t('views.tasks.search.status')
@@ -18,6 +17,7 @@ block content
                 each s in statuses || []
                   option(value=s.id, selected=(s.id == (query && query.status)))= s.name
           
+          //- Filtro de Ejecutor
           .col-12.col-md
             .mb-3
               label(for="query_executor")= t('views.tasks.search.executor')
@@ -26,6 +26,7 @@ block content
                 each u in users || []
                   option(value=u.id, selected=(u.id == (query && query.executor)))= `${u.firstName} ${u.lastName}`
           
+          //- Filtro de Etiqueta
           .col-12.col-md
             .mb-3
               label(for="query_label")= t('views.tasks.search.label')
@@ -34,9 +35,15 @@ block content
                 each l in labels || []
                   option(value=l.id, selected=(l.id == (query && query.label)))= l.name
 
+        //- Filtro "Solo mis tareas"
+        .mb-3.form-check
+          input.form-check-input(id="query_isCreatorUser" type="checkbox" name="query[isCreatorUser]" checked=(query && query.isCreatorUser === 'on'))
+          label.form-check-label(for="query_isCreatorUser")= t('views.tasks.search.isCreatorUser')
+        
         input(class="btn btn-primary" type="submit" value=t('views.tasks.search.filter'))
 
-  table.table.table-striped
+  //- Tabla de resultados
+  table.table.table-striped.mt-5
     thead
       tr
         th= t('views.tasks.index.id')
@@ -63,6 +70,5 @@ block content
           td= formatDate(task.createdAt)
           td
             .d-flex
-              //- URLs manuales para evitar errores de registro
-              a.btn.btn-primary.me-1(href=`/tasks/${task.id}/edit`)= t('views.tasks.index.edit')
-              +buttonTo(`/tasks/${task.id}`, 'delete')(class="btn btn-danger" value=t('views.tasks.index.delete'))
+              a.btn.btn-primary.btn-sm.me-1(href=`/tasks/${task.id}/edit`)= t('views.tasks.index.edit')
+              +buttonTo(`/tasks/${task.id}`, 'delete')(class="btn btn-danger btn-sm" value=t('views.tasks.index.delete'))
