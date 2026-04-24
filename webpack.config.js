@@ -31,6 +31,7 @@ export default {
   mode,
   // ESTA LÍNEA ES LA QUE FALTA Y LA QUE CAUSA EL ERROR
   entry: './src/init.js', 
+  target: 'node',
   module: {
     rules: [
       {
