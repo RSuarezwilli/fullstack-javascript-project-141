@@ -29,6 +29,8 @@ const mode = process.env.NODE_ENV || 'development';
 
 export default {
   mode,
+  // ESTA LÍNEA ES LA QUE FALTA Y LA QUE CAUSA EL ERROR
+  entry: './src/init.js', 
   module: {
     rules: [
       {
@@ -46,4 +48,3 @@ export default {
   },
   plugins: [new MiniCssExtractPlugin()],
 };
-
