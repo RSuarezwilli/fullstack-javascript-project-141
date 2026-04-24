@@ -1,4 +1,4 @@
-// @ts-check
+
 
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 
