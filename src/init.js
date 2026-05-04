@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-import 'dotenv/config'; // 1. CARGA DE VARIABLES DE ENTORNO (Debe ser la primera línea)
-import Fastify from 'fastify';
+import 'dotenv/config';
 import view from '@fastify/view';
 import pug from 'pug';
 import i18next from 'i18next';
@@ -8,22 +7,22 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { Model } from 'objection';
 import Knex from 'knex';
-import Rollbar from 'rollbar'; // 2. IMPORTACIÓN DE ROLLBAR
+import Rollbar from 'rollbar';
 
-// Importación de Modelos...
+// Importación de Modelos
 import Label from './models/Label.js';
 import TaskStatus from './models/TaskStatus.js';
 import Task from './models/Task.js';
 import User from './models/users.js';
 
-// Importación de rutas...
+// Importación de rutas
 import sessionsRoutes from './routes/sessions.js';
 import usersRoutes from './routes/users.js';
 import registerStatusesRoutes from './routes/statuses.js';
 import registerTasksRoutes from './routes/tasks.js';
 import labelsRoutes from './routes/labels.js';
 
-// Importación de plugins...
+// Importación de plugins
 import reverseRoutes from 'fastify-reverse-routes';
 import fastifyCookie from '@fastify/cookie';
 import fastifySession from '@fastify/session';
@@ -34,7 +33,7 @@ import knexConfig from '../knexfile.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 3. CONFIGURACIÓN DE ROLLBAR
+// Configuración de Rollbar (Fuera de la función para que sea global)
 const rollbar = new Rollbar({
   accessToken: process.env.ROLLBAR_TOKEN,
   captureUncaught: true,
@@ -42,24 +41,22 @@ const rollbar = new Rollbar({
   environment: process.env.NODE_ENV || 'development',
 });
 
-const init = async () => {
-  const app = Fastify({ 
-    logger: process.env.NODE_ENV !== 'test'
-  });
-
-  // 4. MANEJADOR DE ERRORES GLOBAL
-  // Captura cualquier error en las rutas y lo envía a Rollbar
-  app.setErrorHandler((error, request, reply) => {
-    rollbar.error(error, request.raw); // Envío a la nube
-    app.log.error(error); // Log local
-    reply.status(error.statusCode || 500).send(error);
-  });
-
+// EXPORTACIÓN PRINCIPAL: Recibe exactamente 2 argumentos (app, options)
+export default async (app, options) => {
+  
   // 1. CONFIGURACIÓN DE BASE DE DATOS
   const env = process.env.NODE_ENV || 'development';
   const knex = Knex(knexConfig[env]);
   Model.knex(knex);
 
+  // 2. MANEJADOR DE ERRORES GLOBAL (Rollbar)
+  app.setErrorHandler((error, request, reply) => {
+    rollbar.error(error, request.raw);
+    app.log.error(error);
+    reply.status(error.statusCode || 500).send(error);
+  });
+
+  // 3. DECORADORES PARA OBJECTION
   app.decorate('objection', {
     models: {
       user: User,
@@ -69,7 +66,7 @@ const init = async () => {
     },
   });
 
-  // 2. INICIALIZAR TRADUCCIONES (Mantenemos tu configuración actual)
+  // 4. INICIALIZAR TRADUCCIONES
   await i18next.init({
     lng: 'es',
     resources: {
@@ -87,27 +84,6 @@ const init = async () => {
             }
           },
           views: {
-            tasks: {
-              index: {
-                title: 'Tareas',
-                create: 'Crear tarea',
-                id: 'ID',
-                name: 'Nombre',
-                status: 'Estado',
-                author: 'Autor',
-                executor: 'Ejecutor',
-                createdAt: 'Fecha de creación',
-                edit: 'Editar',
-                delete: 'Eliminar',
-              },
-              search: {
-                status: 'Estado',
-                executor: 'Ejecutor',
-                label: 'Etiqueta',
-                isCreatorUser: 'Solo mis tareas',
-                filter: 'Filtrar'
-              }
-            },
             welcome: {
               index: {
                 hello: '¡Hola desde el Jumbotron!',
@@ -115,13 +91,14 @@ const init = async () => {
                 more: 'Saber más'
               }
             }
+            // Agrega aquí el resto de tus traducciones si las necesitas
           }
         }
       }
     }
   });
 
-  // 3. REGISTRO DE PLUGINS
+  // 5. REGISTRO DE PLUGINS
   await app.register(fastifyCookie);
   await app.register(fastifySession, {
     secret: process.env.SESSION_SECRET || 'a-very-long-secret-key-at-least-32-chars-long',
@@ -130,66 +107,41 @@ const init = async () => {
   await app.register(fastifyFlash);
   await app.register(reverseRoutes);
 
-  // 4. MOTOR DE PLANTILLAS Y RUTAS
-  app.after(() => {
-    app.register(view, {
-      engine: { pug },
-      root: path.join(__dirname, 'views'),
-      defaultContext(reply) {
-        return {
-          route: (name, params = {}, query = {}) => {
-            if (typeof name !== 'string') return '#';
-            try {
-              return app.reverse(name, params, query);
-            } catch (err) {
-              return '#';
-            }
-          },
-          t: (key) => i18next.t(key),
-          getMessages: () => (reply.flash ? reply.flash() : {}),
-          formatDate: (date) => (date ? new Date(date).toLocaleString() : ''),
-        };
-      },
-    });
-
-    usersRoutes(app);
-    sessionsRoutes(app);
-    registerStatusesRoutes(app);
-    registerTasksRoutes(app);
-    labelsRoutes(app);
-
-    app.get('/', { name: 'root' }, async (request, reply) => {
-      return reply.view('index.pug');
-    });
-
-    // RUTA PARA PROBAR ROLLBAR (Puedes borrarla después)
-    app.get('/test-error', async () => {
-      throw new Error("¡Prueba de Rollbar exitosa!");
-    });
+  // 6. MOTOR DE PLANTILLAS
+  await app.register(view, {
+    engine: { pug },
+    root: path.join(__dirname, 'views'),
+    defaultContext(reply) {
+      return {
+        route: (name, params = {}, query = {}) => {
+          try {
+            return app.reverse(name, params, query);
+          } catch (err) {
+            return '#';
+          }
+        },
+        t: (key) => i18next.t(key),
+        getMessages: () => (reply.flash ? reply.flash() : {}),
+        formatDate: (date) => (date ? new Date(date).toLocaleString() : ''),
+      };
+    },
   });
 
-  // 6. CIERRE LIMPIO DE CONEXIONES
+  // 7. REGISTRO DE RUTAS
+  usersRoutes(app);
+  sessionsRoutes(app);
+  registerStatusesRoutes(app);
+  registerTasksRoutes(app);
+  labelsRoutes(app);
+
+  app.get('/', { name: 'root' }, async (request, reply) => {
+    return reply.view('index.pug');
+  });
+
+  // 8. CIERRE LIMPIO DE CONEXIONES
   app.addHook('onClose', async () => {
     await knex.destroy();
   });
 
-  await app.ready();
-  return app;
+  // Nota: No llamamos a app.listen(), de eso se encarga fastify-cli
 };
-
-// 7. ARRANQUE DEL SERVIDOR
-if (process.env.NODE_ENV !== 'test') {
-  const start = async () => {
-    try {
-      const server = await init();
-      await server.listen({ port: process.env.PORT || 3000, host: '0.0.0.0' });
-    } catch (err) {
-      rollbar.error(err); // Captura error de arranque
-      console.error(err);
-      process.exit(1);
-    }
-  };
-  start();
-}
-
-export default init;

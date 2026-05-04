@@ -22,16 +22,18 @@
 //   plugins: [new MiniCssExtractPlugin()],
 // };
 
-
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
+// ESTA LÍNEA ES LA QUE FALTA:
+import nodeExternals from 'webpack-node-externals'; 
 
 const mode = process.env.NODE_ENV || 'development';
 
 export default {
   mode,
-  // ESTA LÍNEA ES LA QUE FALTA Y LA QUE CAUSA EL ERROR
-  entry: './src/init.js', 
   target: 'node',
+  entry: './src/init.js',
+  // Aquí es donde se usa la variable importada arriba
+  externals: [nodeExternals()], 
   module: {
     rules: [
       {
@@ -49,3 +51,4 @@ export default {
   },
   plugins: [new MiniCssExtractPlugin()],
 };
+

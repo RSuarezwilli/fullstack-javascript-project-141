@@ -1,26 +1,71 @@
+
+import i18next from 'i18next';
+import _ from 'lodash';
+
 export default (app) => {
   app
-    .get('/statuses', { name: 'statuses' }, async (req, reply) => {
-      const statuses = await app.objection.models.taskStatus.query();
-      return reply.view('statuses/index.pug', { statuses });
+    .get('/statuses', { name: 'statuses', preValidation: app.authenticate }, async (req, reply) => {
+      const taskStatuses = await app.objection.models.taskStatus.query();
+      reply.render('statuses/index', { taskStatuses });
+      return reply;
     })
-    .get('/statuses/new', { name: 'newStatus' }, (req, reply) => {
-      return reply.view('statuses/new.pug', { status: {} });
-    }) 
-    // AGREGAMOS EL NOMBRE AQUÍ: 'createStatus'
-    .post('/statuses', { name: 'createStatus' }, async (req, reply) => {
+    .get('/statuses/new', { name: 'newStatus', preValidation: app.authenticate }, (req, reply) => {
+      const taskStatus = new app.objection.models.taskStatus();
+      reply.render('statuses/new', { taskStatus });
+    })
+    .post('/statuses', { preValidation: app.authenticate }, async (req, reply) => {
+      const taskStatus = new app.objection.models.taskStatus();
+      taskStatus.$set(req.body.data);
+
       try {
-        const status = await app.objection.models.taskStatus.fromJson(req.body.data);
-        await app.objection.models.taskStatus.query().insert(status);
-        
-        req.flash('info', 'Estado creado correctamente');
-        return reply.redirect(app.reverse('statuses')); // Uso de reverse seguro
-      } catch (err) {
-        req.flash('error', 'Error al crear el estado');
-        return reply.view('statuses/new.pug', { 
-          status: req.body.data, 
-          errors: err.data 
-        });
+        const validTaskStatus = app.objection.models.taskStatus.fromJson(req.body.data);
+        await app.objection.models.taskStatus.query().insert(validTaskStatus);
+        req.flash('info', i18next.t('flash.taskStatus.create.success'));
+        reply.redirect(app.reverse('statuses'));
+      } catch ({ data }) {
+        req.flash('error', i18next.t('flash.taskStatus.create.error'));
+        reply.code(422);
+        reply.render('statuses/new', { taskStatus, errors: data });
       }
+
+      return reply;
+    })
+    .get('/statuses/:id/edit', { name: 'editStatus', preValidation: app.authenticate }, async (req, reply) => {
+      const { id } = req.params;
+      const taskStatus = await app.objection.models.taskStatus.query().findById(id);
+      reply.render('statuses/edit', { taskStatus });
+      return reply;
+    })
+    .patch('/statuses/:id', { name: 'status', preValidation: app.authenticate }, async (req, reply) => {
+      const { id } = req.params;
+      const taskStatus = await app.objection.models.taskStatus.query().findById(id);
+
+      try {
+        await taskStatus.$query().patch(req.body.data);
+        req.flash('info', i18next.t('flash.taskStatus.edit.success'));
+        reply.redirect(app.reverse('statuses'));
+      } catch ({ data }) {
+        req.flash('error', i18next.t('flash.taskStatus.edit.error'));
+        reply.code(422);
+        taskStatus.$set(req.body.data);
+        reply.render('statuses/edit', { taskStatus, errors: data });
+      }
+
+      return reply;
+    })
+    .delete('/statuses/:id', { preValidation: app.authenticate }, async (req, reply) => {
+      const { id } = req.params;
+      const taskStatus = await app.objection.models.taskStatus.query().findById(id);
+      const tasks = await taskStatus.$relatedQuery('tasks');
+
+      if (_.isEmpty(tasks)) {
+        await app.objection.models.taskStatus.query().deleteById(id);
+        req.flash('info', i18next.t('flash.taskStatus.delete.success'));
+      } else {
+        req.flash('error', i18next.t('flash.taskStatus.delete.error'));
+      }
+
+      reply.redirect(app.reverse('statuses'));
+      return reply;
     });
 };

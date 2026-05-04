@@ -1,117 +1,166 @@
+import i18next from 'i18next';
+import _ from 'lodash';
+
 export default (app) => {
   app
-    .get('/tasks', { name: 'tasks' }, async (req, reply) => {
-      // Nota: req.query contiene los parámetros. Si en el Pug usas name="query[status]", 
-      // Fastify lo parsea como un objeto anidado.
-      const { query } = req.query;
+    .get('/tasks', { name: 'tasks', preValidation: app.authenticate }, async (req, reply) => {
+      const filterOptions = req.query;
+      const statuses = await app.objection.models.taskStatus.query();
+      const users = await app.objection.models.user.query();
+      const labels = await app.objection.models.label.query();
 
-      const tasksQuery = app.objection.models.task.query()
-        .withGraphJoined('[status, executor, creator, labels]')
-        .modify((qb) => {
-          if (query?.status) {
-            qb.where('statusId', query.status);
-          }
-          if (query?.executor) {
-            qb.where('executorId', query.executor);
-          }
-          if (query?.label) {
-            qb.whereExists(
-              app.objection.models.task.relatedQuery('labels').where('labels.id', query.label)
-            );
-          }
-          if (query?.isCreatorUser === 'on') {
-            const currentUserId = req.session.get('userId');
-            qb.where('creatorId', currentUserId);
-          }
-        });
+      const query = app.objection.models.task.query()
+        .withGraphJoined('[status, creator, executor, labels]')
+        .modify('sortByLatestCreatedDate');
 
-      const [tasks, statuses, users, labels] = await Promise.all([
-        tasksQuery,
-        app.objection.models.taskStatus.query(),
-        app.objection.models.user.query(),
-        app.objection.models.label.query(),
-      ]);
+      const {
+        status, executor, label, isCreatorUser,
+      } = filterOptions;
+      if (status) {
+        query.modify('findByStatus', status);
+      }
+      if (executor) {
+        query.modify('findByExecutor', executor);
+      }
+      if (isCreatorUser) {
+        query.modify('findByCreator', req.user.id);
+      }
+      if (label) {
+        query.modify('findByLabel', label);
+      }
 
-      return reply.view('tasks/index.pug', { tasks, statuses, users, labels, query });
-    }) // Se eliminó el punto y coma extra aquí
+      const tasks = await query;
 
-    .post('/tasks', { name: 'createTask' }, async (req, reply) => {
-      const { data } = req.body;
-      
-      // Manejo de etiquetas: convertir IDs a objetos para insertGraph
-      const labelIds = [data.labels].flat().filter(Boolean);
-      const labels = labelIds.map((id) => ({ id: Number(id) }));
+      reply.render('tasks/index', {
+        tasks, statuses, users, labels, filterOptions,
+      });
+      return reply;
+    })
+    .get('/tasks/new', { name: 'newTask', preValidation: app.authenticate }, async (req, reply) => {
+      const task = new app.objection.models.task();
+      const statuses = await app.objection.models.taskStatus.query();
+      const users = await app.objection.models.user.query();
+      const labels = await app.objection.models.label.query();
+
+      reply.render('tasks/new', {
+        task, statuses, users, labels,
+      });
+      return reply;
+    })
+    .post('/tasks', { preValidation: app.authenticate }, async (req, reply) => {
+      const task = new app.objection.models.task();
+      const { data: formData } = req.body;
+      const labelsIds = [_.get(formData, 'labels', [])].flat();
+      const existingLabels = await app.objection.models.label.query().findByIds(labelsIds);
+      const taskData = {
+        ...formData,
+        statusId: Number(formData.statusId),
+        creatorId: req.user.id,
+        executorId: !formData.executorId ? null : Number(formData.executorId),
+        labels: existingLabels,
+      };
 
       try {
-        await app.objection.models.task.query().insertGraph({
-          name: data.name,
-          description: data.description,
-          executorId: data.executorId ? Number(data.executorId) : null,
-          statusId: Number(data.statusId),
-          creatorId: Number(req.session.get('userId')),
-          labels,
-        }, { relate: true });
+        await app.objection.models.task.transaction(async (trx) => {
+          const insertedTask = await app.objection.models.task.query(trx)
+            .insertGraph(taskData, { relate: ['labels'] });
+          return insertedTask;
+        });
 
-        req.flash('info', req.t('views.tasks.flash.create.success'));
-        return reply.redirect(app.reverse('tasks'));
-      } catch (err) {
+        req.flash('info', i18next.t('flash.task.create.success'));
+        reply.redirect(app.reverse('tasks'));
+      } catch ({ data }) {
         const statuses = await app.objection.models.taskStatus.query();
         const users = await app.objection.models.user.query();
-        const allLabels = await app.objection.models.label.query();
-        
-        req.flash('error', req.t('views.tasks.flash.create.error'));
-        return reply.view('tasks/new.pug', { 
-          task: data, 
-          statuses, 
-          users, 
-          labels: allLabels, 
-          errors: err.data 
+        const labels = await app.objection.models.label.query();
+
+        req.flash('error', i18next.t('flash.task.create.error'));
+        reply.code(422);
+        task.$set(formData);
+        reply.render('tasks/new', {
+          task, errors: data, statuses, users, labels,
         });
       }
-    })
 
-    .patch('/tasks/:id', { name: 'updateTask' }, async (req, reply) => {
-      const { data } = req.body;
+      return reply;
+    })
+    .get('/tasks/:id/edit', { name: 'editTask', preValidation: app.authenticate }, async (req, reply) => {
       const { id } = req.params;
-      
-      const labelIds = [data.labels].flat().filter(Boolean);
-      const labels = labelIds.map((lid) => ({ id: Number(lid) }));
+      const task = await app.objection.models.task.query().findById(id).withGraphJoined('labels');
+      const statuses = await app.objection.models.taskStatus.query();
+      const users = await app.objection.models.user.query();
+      const labels = await app.objection.models.label.query();
+      task.$set({ ...task, labels: _.map(task.labels, 'id') });
 
-      try {
-        const task = await app.objection.models.task.query().findById(id);
-        await task.$query().upsertGraph({
-          ...data,
-          id: Number(id),
-          executorId: data.executorId ? Number(data.executorId) : null,
-          statusId: Number(data.statusId),
-          labels,
-        }, { relate: true, unrelate: true });
-
-        req.flash('info', req.t('views.tasks.flash.update.success'));
-        return reply.redirect(app.reverse('tasks'));
-      } catch (err) {
-        req.flash('error', req.t('views.tasks.flash.update.error'));
-        return reply.redirect(app.reverse('editTask', { id }));
-      }
+      reply.render('tasks/edit', {
+        task, statuses, users, labels,
+      });
+      return reply;
     })
+    .get('/tasks/:id', { name: 'task', preValidation: app.authenticate }, async (req, reply) => {
+      const { id } = req.params;
+      const task = await app.objection.models.task.query()
+        .findById(id).withGraphJoined('[status, creator, executor, labels]');
 
-    .delete('/tasks/:id', { name: 'deleteTask' }, async (req, reply) => {
+      reply.render('tasks/show', { task });
+      return reply;
+    })
+    .patch('/tasks/:id', { preValidation: app.authenticate }, async (req, reply) => {
+      const { id } = req.params;
+      const { data: formData } = req.body;
+      const labelsIds = [_.get(formData, 'labels', [])].flat();
+      const existingLabels = await app.objection.models.label.query().findByIds(labelsIds);
+      const task = await app.objection.models.task.query().findById(id);
+      const taskData = {
+        ...task,
+        ...formData,
+        statusId: Number(formData.statusId),
+        executorId: !formData.executorId ? null : Number(formData.executorId),
+        labels: existingLabels,
+      };
+
       try {
-        const { id } = req.params;
-        const currentUserId = req.session.get('userId');
-        const task = await app.objection.models.task.query().findById(id);
+        await app.objection.models.task.transaction(async (trx) => {
+          const updatedTask = await app.objection.models.task.query(trx)
+            .allowGraph('labels')
+            .upsertGraph(taskData, {
+              relate: true, unrelate: true, noDelete: true,
+            });
+          return updatedTask;
+        });
 
-        // REQUISITO CRÍTICO: Solo el creador puede borrar la tarea
-        if (!task || Number(task.creatorId) !== Number(currentUserId)) {
-          req.flash('error', req.t('views.tasks.flash.delete.error'));
-          return reply.redirect(app.reverse('tasks'));
-        }
+        req.flash('info', i18next.t('flash.task.edit.success'));
+        reply.redirect(app.reverse('tasks'));
+      } catch ({ data }) {
+        const statuses = await app.objection.models.taskStatus.query();
+        const users = await app.objection.models.user.query();
+        const labels = await app.objection.models.label.query();
+        task.$set({ ...formData, id });
 
-        await app.objection.models.task.query().deleteById(id);
-        req.flash('info', req.t('views.tasks.flash.delete.success'));
-      } catch (err) {
-        req.flash('error', req.t('views.tasks.flash.delete.error'));
+        req.flash('error', i18next.t('flash.task.edit.error'));
+        reply.code(422);
+        reply.render('tasks/edit', {
+          task, errors: data, statuses, users, labels,
+        });
       }
-      return reply.redirect(app.reverse('tasks'));
+
+      return reply;
+    })
+    .delete('/tasks/:id', { preValidation: app.authenticate }, async (req, reply) => {
+      const { id } = req.params;
+
+      const task = await app.objection.models.task.query().findById(id);
+
+      if (task.creatorId !== req.user.id) {
+        req.flash('error', i18next.t('flash.task.delete.error'));
+        reply.redirect(app.reverse('tasks'));
+        return reply;
+      }
+
+      await task.$relatedQuery('labels').unrelate();
+      await task.$query().delete();
+      req.flash('info', i18next.t('flash.task.delete.success'));
+      reply.redirect(app.reverse('tasks'));
+      return reply;
     });
 };
