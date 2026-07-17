@@ -1,26 +1,36 @@
+// @ts-check
+
 import { fileURLToPath } from 'url';
 import path from 'path';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export default {
-  development: {
-    client: 'sqlite3',
-    connection: {
-      filename: path.resolve(__dirname, 'database.sqlite'),
-    },
-    useNullAsDefault: true,
-    migrations: {
-      directory: path.resolve(__dirname, 'migrations'),
-    },
+const migrations = {
+  directory: path.join(__dirname, 'server', 'migrations'),
+};
+
+export const development = {
+  client: 'sqlite3',
+  connection: {
+    filename: './database.sqlite',
   },
-  // NUEVA CONFIGURACIÓN PARA TESTS
-  test: {
-    client: 'sqlite3',
-    connection: ':memory:', // Base de datos en memoria para que sea limpia y rápida
-    useNullAsDefault: true,
-    migrations: {
-      directory: path.resolve(__dirname, 'migrations'),
-    },
+  useNullAsDefault: true,
+  migrations,
+};
+
+export const test = {
+  client: 'sqlite3',
+  connection: ':memory:',
+  useNullAsDefault: true,
+  // debug: true,
+  migrations,
+};
+
+export const production = {
+  client: 'sqlite3',
+  connection: {
+    filename: './database.sqlite',
   },
+  useNullAsDefault: true,
+  migrations,
 };
