@@ -1,8 +1,10 @@
 // __tests__/tasks.test.js
-import { describe, beforeAll, it, expect, afterAll } from '@jest/globals';
+import {
+  describe, beforeAll, it, expect, afterAll,
+} from '@jest/globals';
 import fastify from 'fastify';
 import initApp from '../src/app.js'; // Ajusta esta ruta a donde esté tu archivo de inicio de app
-import { prepareData, } from './helpers/index.js'; // Tus utilidades de limpieza de DB
+import { prepareData } from './helpers/index.js'; // Tus utilidades de limpieza de DB
 
 describe('Pruebas de Filtrado de Tareas', () => {
   let app;
@@ -42,9 +44,8 @@ describe('Pruebas de Filtrado de Tareas', () => {
   });
 
   afterAll(async () => {
-    if (app){
-         await app.close(); // Cierra la conexión de Fastify y DB
+    if (app) {
+      await app.close(); // Cierra la conexión de Fastify y DB
     }
-   
   });
 });

@@ -10,6 +10,10 @@ import Knex from 'knex';
 import Rollbar from 'rollbar';
 
 // Importación de Modelos
+import reverseRoutes from 'fastify-reverse-routes';
+import fastifyCookie from '@fastify/cookie';
+import fastifySession from '@fastify/session';
+import fastifyFlash from '@fastify/flash';
 import Label from './models/Label.js';
 import TaskStatus from './models/TaskStatus.js';
 import Task from './models/Task.js';
@@ -23,10 +27,6 @@ import registerTasksRoutes from './routes/tasks.js';
 import labelsRoutes from './routes/labels.js';
 
 // Importación de plugins
-import reverseRoutes from 'fastify-reverse-routes';
-import fastifyCookie from '@fastify/cookie';
-import fastifySession from '@fastify/session';
-import fastifyFlash from '@fastify/flash';
 
 import knexConfig from '../knexfile.js';
 
@@ -43,7 +43,6 @@ const rollbar = new Rollbar({
 
 // EXPORTACIÓN PRINCIPAL: Recibe exactamente 2 argumentos (app, options)
 export default async (app, options) => {
-  
   // 1. CONFIGURACIÓN DE BASE DE DATOS
   const env = process.env.NODE_ENV || 'development';
   const knex = Knex(knexConfig[env]);
@@ -80,22 +79,22 @@ export default async (app, options) => {
               statuses: 'Estados',
               tasks: 'Tareas',
               labels: 'Etiquetas',
-              footer_text: '© 2026 William Suarez - Estudiante de Software'
-            }
+              footer_text: '© 2026 William Suarez - Estudiante de Software',
+            },
           },
           views: {
             welcome: {
               index: {
                 hello: '¡Hola desde el Jumbotron!',
                 description: 'Este es un ejemplo funcional usando Fastify, Pug y Bootstrap.',
-                more: 'Saber más'
-              }
-            }
+                more: 'Saber más',
+              },
+            },
             // Agrega aquí el resto de tus traducciones si las necesitas
-          }
-        }
-      }
-    }
+          },
+        },
+      },
+    },
   });
 
   // 5. REGISTRO DE PLUGINS
@@ -134,9 +133,7 @@ export default async (app, options) => {
   registerTasksRoutes(app);
   labelsRoutes(app);
 
-  app.get('/', { name: 'root' }, async (request, reply) => {
-    return reply.view('index.pug');
-  });
+  app.get('/', { name: 'root' }, async (request, reply) => reply.view('index.pug'));
 
   // 8. CIERRE LIMPIO DE CONEXIONES
   app.addHook('onClose', async () => {

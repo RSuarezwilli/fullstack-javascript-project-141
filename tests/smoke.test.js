@@ -1,4 +1,6 @@
-import { describe, beforeAll, it, expect, afterAll } from '@jest/globals';
+import {
+  describe, beforeAll, it, expect, afterAll,
+} from '@jest/globals';
 import initApp from '../src/app.js';
 
 describe('Smoke Test', () => {
