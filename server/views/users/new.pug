@@ -1,18 +1,19 @@
 extends ../layouts/application.pug
 
+block header
+  = t('views.user.new.signUp')
+
 block content
-  h1 Registro
-  form(action='/users' method='post')
-    .mb-3
-      label(for="data_firstName") Nombre
-      input#data_firstName.form-control(name="data[firstName]" type="text" value=user.firstName || '')
-    .mb-3
-      label(for="data_lastName") Apellido
-      input#data_lastName.form-control(name="data[lastName]" type="text" value=user.lastName || '')
-    .mb-3
-      label(for="data_email") Email
-      input#data_email.form-control(name="data[email]" type="email" value=user.email || '')
-    .mb-3
-      label(for="data_password") Contraseña
-      input#data_password.form-control(name="data[password]" type="password")
-    button.btn.btn-primary(type="submit") Registrar
+  .row.justify-content-center
+    .col-12.col-md-8
+      .card.shadow-sm
+        .card-body.row.p-5
+          .col-12.col-md-6.d-flex.align-items-center.justify-content-center
+            img(src=assetPath('avatar.jpg')).rounded-circle
+          .col-12.col-md-6.mt-3.mt-mb-0
+            +formFor()(action=route('users') method='post')
+              +input(user, 'firstName', errors)(type="text")
+              +input(user, 'lastName', errors)(type="text")
+              +input(user, 'email', errors)(type="text")
+              +input(user, 'password', errors)(type="password")
+              +submit(user)(value=t('views.user.new.submit'))

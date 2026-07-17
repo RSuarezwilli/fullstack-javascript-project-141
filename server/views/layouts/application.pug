@@ -1,32 +1,47 @@
 doctype html
+include ../mixins/forms.pug
+
+doctype html
 html(lang="es")
   head
-    title= t('layouts.main.title')
-    link(rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css")
-  body
-    nav.navbar.navbar-expand-lg.navbar-light.bg-light.mb-4
-      .container-fluid
-        a.navbar-brand(href=route('root'))= t('layouts.main.brand')
-        button.navbar-toggler(type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation")
+    meta(name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no")
+    title= t('layouts.application.title')
+    script(src=assetPath('main.js'))
+    link(href=assetPath('main.css') rel="stylesheet")
+  body.d-flex.flex-column.min-vh-100.bg-light
+    nav.navbar.navbar-expand-lg.navbar-light.bg-white
+      .container
+        a.navbar-brand(href=route('root'))= t('appName')
+        button.navbar-toggler(data-bs-toggle="collapse" data-bs-target="#navbarToggleExternalContent")
           span.navbar-toggler-icon
-        .collapse.navbar-collapse#navbarNav
-          ul.navbar-nav.me-auto.mb-2.mb-lg-0
-            li.nav-item
-              a.nav-link(href=route('users'))= t('layouts.main.users')
-            li.nav-item
-              a.nav-link(href=route('statuses'))= t('layouts.main.statuses')
-            li.nav-item
-              a.nav-link(href=route('labels'))= t('layouts.main.labels')
-            li.nav-item
-              a.nav-link(href=route('tasks'))= t('layouts.main.tasks')
+        .collapse.navbar-collapse(id="navbarToggleExternalContent")
+          ul.navbar-nav.justify-content-end.w-100
+            li.nav-item.me-auto
+              a.nav-link(href=route('users'))= t('layouts.application.users')
+            if isAuthenticated()
+              li.nav-item
+                a.nav-link(href=route('statuses'))= t('layouts.application.taskStatuses')
+              li.nav-item
+                a.nav-link(href=route('labels'))= t('layouts.application.labels')
+              li.nav-item
+                a.nav-link(href=route('tasks'))= t('layouts.application.tasks')
+            if isAuthenticated()
+              li.nav-item
+                +buttonTo(route('session'), 'delete')(class="btn nav-link" value=t('layouts.application.signOut'))
+            else
+              li.nav-item
+                a.nav-link(href=route('newSession'))= t('layouts.application.signIn')
+              li.nav-item
+                a.nav-link(href=route('newUser'))= t('layouts.application.signUp')
+    .container.wrapper.flex-grow-1
+      each messages, type in reply.flash() || []
+        each message in messages
+          div.alert(class=`alert-${getAlertClass(type)}`)= message
 
-    main.container
-      each type in ['info', 'error', 'success']
-        each message in getMessages(reply)[type] || []
-          .alert(class=`alert-${type === 'error' ? 'danger' : type}`) #{message}
-      
+      h1.display-4.fw-bold.mt-4
+        block header
       block content
 
-    footer.footer.mt-auto.py-3.bg-light
-      .container
-        span.text-muted= t('layouts.main.footer_text')
+    footer.bg-dark.text-light
+      .container.py-3
+        p.lead.mb-0 &copy; Codica.la

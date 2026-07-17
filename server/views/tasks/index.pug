@@ -1,74 +1,47 @@
 extends ../layouts/application.pug
 
+block header
+  = t('layouts.application.tasks')
+
 block content
-  h1.display-4.fw-bold.mt-4= t('layouts.main.tasks')
-  a.btn.btn-primary.mb-3(href='/tasks/new')= t('views.tasks.index.create')
+  a.btn.btn-primary.mb-5(href=route('newTask'))= t('views.task.create')
 
-  .card.shadow-sm.mb-4
-    .card-body.p-4.bg-light
-      form(action='/tasks' method='get')
+  .card.shadow-sm
+    .card-body.p-4
+      form(action=route('tasks') method='get')
         .row
-          //- Filtro de Estado
           .col-12.col-md
-            .mb-3
-              label(for="query_status")= t('views.tasks.search.status')
-              select(id="query_status" name="query[status]" class="form-select")
-                option(value="")
-                each s in statuses || []
-                  option(value=s.id, selected=(s.id == (query && query.status)))= s.name
-          
-          //- Filtro de Ejecutor
+            +filterSelect('task',  filterOptions, 'status', statuses)
           .col-12.col-md
-            .mb-3
-              label(for="query_executor")= t('views.tasks.search.executor')
-              select(id="query_executor" name="query[executor]" class="form-select")
-                option(value="")
-                each u in users || []
-                  option(value=u.id, selected=(u.id == (query && query.executor)))= `${u.firstName} ${u.lastName}`
-          
-          //- Filtro de Etiqueta
+            +filterSelect('task',  filterOptions, 'executor', users)
           .col-12.col-md
-            .mb-3
-              label(for="query_label")= t('views.tasks.search.label')
-              select(id="query_label" name="query[label]" class="form-select")
-                option(value="")
-                each l in labels || []
-                  option(value=l.id, selected=(l.id == (query && query.label)))= l.name
+            +filterSelect('task',  filterOptions, 'label', labels)
+        +filterCheckBox('task',  filterOptions, 'isCreatorUser')
+        +submit()(value= t(`views.task.filter.submit`))
 
-        //- Filtro "Solo mis tareas"
-        .mb-3.form-check
-          input.form-check-input(id="query_isCreatorUser" type="checkbox" name="query[isCreatorUser]" checked=(query && query.isCreatorUser === 'on'))
-          label.form-check-label(for="query_isCreatorUser")= t('views.tasks.search.isCreatorUser')
-        
-        input(class="btn btn-primary" type="submit" value=t('views.tasks.search.filter'))
 
-  //- Tabla de resultados
-  table.table.table-striped.mt-5
-    thead
-      tr
-        th= t('views.tasks.index.id')
-        th= t('views.tasks.index.name')
-        th= t('views.tasks.index.status')
-        th= t('views.tasks.index.author')
-        th= t('views.tasks.index.executor')
-        th= t('views.tasks.index.labels')
-        th= t('views.tasks.index.createdAt')
-        th
-    tbody
-      each task in tasks || []
+  div.table-responsive
+    table.table.table-borderless.table-striped.mt-5.bg-white
+      thead
         tr
-          td= task.id
-          td
-            a(href=`/tasks/${task.id}`)= task.name
-          td= task.status ? task.status.name : ''
-          td= task.creator ? `${task.creator.firstName} ${task.creator.lastName}` : ''
-          td= task.executor ? `${task.executor.firstName} ${task.executor.lastName}` : ''
-          td
-            if task.labels
-              each label in task.labels
-                span.badge.bg-secondary.me-1= label.name
-          td= formatDate(task.createdAt)
-          td
-            .d-flex
-              a.btn.btn-primary.btn-sm.me-1(href=`/tasks/${task.id}/edit`)= t('views.tasks.index.edit')
-              +buttonTo(`/tasks/${task.id}`, 'delete')(class="btn btn-danger btn-sm" value=t('views.tasks.index.delete'))
+          th.py-3= t('views.task.id')
+          th.py-3= t('views.task.name')
+          th.py-3= t('views.task.status')
+          th.py-3= t('views.task.creator')
+          th.py-3= t('views.task.executor')
+          th.py-3= t('views.task.createdAt')
+          th
+      tbody
+        each task in tasks
+          tr
+            td= task.id
+            td
+              a(href=route('task', { id: task.id }))= task.name
+            td= task.status.name
+            td= task.creator.name
+            td= _.get(task.executor, 'name')
+            td= formatDate(task.createdAt)
+            td
+              .d-flex
+                a.btn.btn-primary.me-1(href=route('editTask', { id: task.id }))= t('views.task.edit.submit')
+                +buttonTo(route('task', { id: task.id }), 'delete')(class="btn btn-danger" value=t('views.task.delete.submit'))

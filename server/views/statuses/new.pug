@@ -1,9 +1,9 @@
 extends ../layouts/application.pug
 
+block header
+  = t('views.taskStatus.new.title')
+
 block content
-  h1.display-4.fw-bold.my-4 Nuevo Estado
-  form(action=route('statuses') method='post')
-    .mb-3
-      label(for='data_name') Nombre
-      input#data_name.form-control(name='data[name]' type='text' required)
-    input.btn.btn-primary(type='submit' value='Crear')
+  +formFor()(action=route('statuses') method='post')
+    +input(taskStatus, 'name', errors)(type="text")
+    +submit(taskStatus)(value=t('views.taskStatus.new.submit'))
