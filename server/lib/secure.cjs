@@ -1,7 +1,12 @@
-import crypto from 'crypto';
+// @ts-check
 
-// Usamos export const para que coincida con la importación { encrypt }
-export const encrypt = (password) => crypto
-  .createHash('sha256')
-  .update(password)
-  .digest('hex'); 
+const crypto = require('crypto');
+
+/**
+ * @param {string} value
+ */
+module.exports = (value) => crypto.createHash('sha256')
+  .update(value)
+  .digest('hex');
+
+  
